@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2011 thomasv@gitorious
 #
 # Permission is hereby granted, free of charge, to any person
@@ -778,11 +778,11 @@ class Interface(Logger):
             assert chain or can_connect
         if can_connect:
             self.logger.info(f"could connect {height}")
-            height += 1
-            if isinstance(can_connect, Blockchain):  # not when mocking
-                self.blockchain = can_connect
-                self.blockchain.save_header(header)
-            return 'catchup', height
+        height += 1
+        if isinstance(can_connect, Blockchain):  # not when mocking
+            self.blockchain = can_connect
+            self.blockchain.save_header(header)
+        return 'catchup', height
 
         good, bad, bad_header = await self._search_headers_binary(height, bad, bad_header, chain)
         return await self._resolve_potential_chain_fork_given_forkpoint(good, bad, bad_header)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2015 Thomas Voegtlin
 #
 # Permission is hereby granted, free of charge, to any person
@@ -183,7 +183,7 @@ class AuthenticatedServer(Logger):
             try:
                 await self.authenticate(request.headers)
             except AuthenticationInvalidOrMissing:
-                return web.Response(headers={"WWW-Authenticate": "Basic realm=Electrum"},
+                return web.Response(headers={"WWW-Authenticate": "Basic realm=Electrum-Sapphire"},
                                     text='Unauthorized', status=401)
             except AuthenticationCredentialsInvalid:
                 return web.Response(text='Forbidden', status=403)
@@ -257,7 +257,7 @@ class CommandsServer(AuthenticatedServer):
             else:
                 response = "error: current GUI does not support multiple windows"
         else:
-            response = "Error: Electrum is running in daemon mode. Please stop the daemon first."
+            response = "Error: Electrum-Sapphire is running in daemon mode. Please stop the daemon first."
         return response
 
     async def run_cmdline(self, config_options):

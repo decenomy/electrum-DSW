@@ -1,22 +1,22 @@
-# If you want Electrum to appear in a Linux app launcher ("start menu"), install this by doing:
+# If you want Electrum-Sapphire to appear in a Linux app launcher ("start menu"), install this by doing:
 # sudo desktop-file-install electrum.desktop
 
 [Desktop Entry]
-Comment=Lightweight Bitcoin Client
-Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; electrum %u"
-GenericName[en_US]=Bitcoin Wallet
-GenericName=Bitcoin Wallet
+Comment=Lightweight Sapphire Client
+Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; electrum-sapphire %u"
+GenericName[en_US]=Sapphire Wallet
+GenericName=Sapphire Wallet
 Icon=electrum
-Name[en_US]=Electrum Bitcoin Wallet
-Name=Electrum Bitcoin Wallet
+Name[en_US]=Electrum Sapphire Wallet
+Name=Electrum Sapphire Wallet
 Categories=Finance;Network;
 StartupNotify=true
 StartupWMClass=electrum
 Terminal=false
 Type=Application
-MimeType=x-scheme-handler/bitcoin;
+MimeType=x-scheme-handler/sapphire;
 Actions=Testnet;
 
 [Desktop Action Testnet]
-Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; electrum --testnet %u"
+Exec=sh -c "PATH=\"\\$HOME/.local/bin:\\$PATH\"; electrum-sapphire --testnet %u"
 Name=Testnet mode

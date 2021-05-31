@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2018 The Electrum developers
+# Copyright (C) 2021 The DECENOMY Core Developers
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files
@@ -355,7 +356,7 @@ POINT_AT_INFINITY = ECPubkey(None)
 def msg_magic(message: bytes) -> bytes:
     from .bitcoin import var_int
     length = bfh(var_int(len(message)))
-    return b"\x18Bitcoin Signed Message:\n" + length + message
+    return b"\x18DarkNet Signed Message:\n" + length + message
 
 
 def verify_signature(pubkey: bytes, sig: bytes, h: bytes) -> bool:
@@ -374,7 +375,7 @@ def verify_message_with_address(address: str, sig65: bytes, message: bytes, *, n
         public_key, compressed = ECPubkey.from_signature65(sig65, h)
         # check public key using the address
         pubkey_hex = public_key.get_public_key_hex(compressed)
-        for txin_type in ['p2pkh','p2wpkh','p2wpkh-p2sh']:
+        for txin_type in ['p2pkh']: # ,'p2wpkh','p2wpkh-p2sh']:
             addr = pubkey_to_address(txin_type, pubkey_hex, net=net)
             if address == addr:
                 break
@@ -481,6 +482,7 @@ class ECPrivkey(ECPubkey):
     def sign_message(self, message: bytes, is_compressed: bool, algo=lambda x: sha256d(msg_magic(x))) -> bytes:
         def bruteforce_recid(sig_string):
             for recid in range(4):
+                print(is_compressed)
                 sig65 = construct_sig65(sig_string, recid, is_compressed)
                 try:
                     self.verify_message_for_address(sig65, message, algo)
@@ -491,6 +493,8 @@ class ECPrivkey(ECPubkey):
                 raise Exception("error: cannot sign message. no recid fits..")
 
         message = to_bytes(message, 'utf8')
+        print(message)
+        print(msg_magic(message))
         msg_hash = algo(message)
         sig_string = self.sign(msg_hash, sigencode=sig_string_from_r_and_s)
         sig65, recid = bruteforce_recid(sig_string)

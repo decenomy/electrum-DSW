@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2012 thomasv@gitorious
 #
 # Permission is hereby granted, free of charge, to any person
@@ -142,7 +142,7 @@ class ElectrumGui(Logger):
         self.tray.show()
 
     def set_dark_theme_if_needed(self):
-        use_dark_theme = self.config.get('qt_gui_color_theme', 'default') == 'dark'
+        use_dark_theme = self.config.get('qt_gui_color_theme', 'dark') == 'dark'
         if use_dark_theme:
             try:
                 import qdarkstyle
@@ -180,7 +180,7 @@ class ElectrumGui(Logger):
             submenu.addAction(_("Close"), window.close)
         m.addAction(_("Dark/Light"), self.toggle_tray_icon)
         m.addSeparator()
-        m.addAction(_("Exit Electrum"), self.app.quit)
+        m.addAction(_("Exit Electrum-Sapphire"), self.app.quit)
 
     def tray_icon(self):
         if self.dark_icon:

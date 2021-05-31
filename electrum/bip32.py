@@ -1,4 +1,5 @@
 # Copyright (C) 2018 The Electrum developers
+# Copyright (C) 2021 The DECENOMY Core Developers
 # Distributed under the MIT software license, see the accompanying
 # file LICENCE or http://www.opensource.org/licenses/mit-license.php
 
@@ -154,7 +155,7 @@ class BIP32Node(NamedTuple):
 
     @classmethod
     def from_rootseed(cls, seed: bytes, *, xtype: str) -> 'BIP32Node':
-        I = hmac_oneshot(b"Bitcoin seed", seed, hashlib.sha512)
+        I = hmac_oneshot(b"Sapphire seed", seed, hashlib.sha512)
         master_k = I[0:32]
         master_c = I[32:]
         return BIP32Node(xtype=xtype,

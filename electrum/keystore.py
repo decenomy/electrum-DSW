@@ -1,8 +1,9 @@
 #!/usr/bin/env python2
 # -*- mode: python -*-
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2016  The Electrum developers
+# Copyright (C) 2021 The DECENOMY Core Developers
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation files
@@ -931,14 +932,16 @@ def xtype_from_derivation(derivation: str) -> str:
     """Returns the script type to be used for this derivation."""
     bip32_indices = convert_bip32_path_to_list_of_uint32(derivation)
     if len(bip32_indices) >= 1:
-        if bip32_indices[0] == 84 + BIP32_PRIME:
-            return 'p2wpkh'
-        elif bip32_indices[0] == 49 + BIP32_PRIME:
-            return 'p2wpkh-p2sh'
-        elif bip32_indices[0] == 44 + BIP32_PRIME:
+        if bip32_indices[0] == 44 + BIP32_PRIME:
             return 'standard'
-        elif bip32_indices[0] == 45 + BIP32_PRIME:
-            return 'standard'
+        # if bip32_indices[0] == 84 + BIP32_PRIME:
+        #     return 'p2wpkh'
+        # elif bip32_indices[0] == 49 + BIP32_PRIME:
+        #     return 'p2wpkh-p2sh'
+        # elif bip32_indices[0] == 44 + BIP32_PRIME:
+        #     return 'standard'
+        # elif bip32_indices[0] == 45 + BIP32_PRIME:
+        #     return 'standard'
 
     if len(bip32_indices) >= 4:
         if bip32_indices[0] == 48 + BIP32_PRIME:
@@ -1047,7 +1050,7 @@ def from_seed(seed, passphrase, is_p2sh=False):
     if t == 'old':
         keystore = Old_KeyStore({})
         keystore.add_seed(seed)
-    elif t in ['standard', 'segwit']:
+    elif t in ['standard']: # , 'segwit']:
         keystore = BIP32_KeyStore({})
         keystore.add_seed(seed)
         keystore.passphrase = passphrase
@@ -1055,9 +1058,9 @@ def from_seed(seed, passphrase, is_p2sh=False):
         if t == 'standard':
             der = "m/"
             xtype = 'standard'
-        else:
-            der = "m/1'/" if is_p2sh else "m/0'/"
-            xtype = 'p2wsh' if is_p2sh else 'p2wpkh'
+        # else:
+        #     der = "m/1'/" if is_p2sh else "m/0'/"
+        #     xtype = 'p2wsh' if is_p2sh else 'p2wpkh'
         keystore.add_xprv_from_seed(bip32_seed, xtype, der)
     else:
         raise BitcoinException('Unexpected seed type {}'.format(repr(t)))

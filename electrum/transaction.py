@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Electrum - lightweight Bitcoin client
+# Electrum - lightweight DECENOMY Standard Wallet
 # Copyright (C) 2011 Thomas Voegtlin
 #
 # Permission is hereby granted, free of charge, to any person
@@ -251,7 +251,7 @@ class TxInput:
 
 
 class BCDataStream(object):
-    """Workalike python implementation of Bitcoin's CDataStream class."""
+    """Workalike python implementation of Sapphire's CDataStream class."""
 
     def __init__(self):
         self.input = None  # type: Optional[bytearray]
@@ -273,7 +273,7 @@ class BCDataStream(object):
         # 0 to 252 :  1-byte-length followed by bytes (if any)
         # 253 to 65,535 : byte'253' 2-byte-length followed by bytes
         # 65,536 to 4,294,967,295 : byte '254' 4-byte-length followed by bytes
-        # ... and the Bitcoin client is coded to understand:
+        # ... and the Sapphire client is coded to understand:
         # greater than 4,294,967,295 : byte '255' 8-byte-length followed by bytes of string
         # ... but I don't think it actually handles any strings that big.
         if self.input is None:
@@ -460,10 +460,10 @@ def get_script_type_from_output_script(_bytes: bytes) -> Optional[str]:
         return 'p2pkh'
     if match_script_against_template(decoded, SCRIPTPUBKEY_TEMPLATE_P2SH):
         return 'p2sh'
-    if match_script_against_template(decoded, SCRIPTPUBKEY_TEMPLATE_P2WPKH):
-        return 'p2wpkh'
-    if match_script_against_template(decoded, SCRIPTPUBKEY_TEMPLATE_P2WSH):
-        return 'p2wsh'
+    # if match_script_against_template(decoded, SCRIPTPUBKEY_TEMPLATE_P2WPKH):
+    #     return 'p2wpkh'
+    # if match_script_against_template(decoded, SCRIPTPUBKEY_TEMPLATE_P2WSH):
+    #     return 'p2wsh'
     return None
 
 def get_address_from_output_script(_bytes: bytes, *, net=None) -> Optional[str]:
@@ -548,7 +548,7 @@ class Transaction:
         self._inputs = None  # type: List[TxInput]
         self._outputs = None  # type: List[TxOutput]
         self._locktime = 0
-        self._version = 2
+        self._version = 1
 
         self._cached_txid = None  # type: Optional[str]
 
@@ -685,16 +685,16 @@ class Transaction:
         # If we don't know the script, we _guess_ it is pubkeyhash.
         # As this method is used e.g. for tx size estimation,
         # the estimation will not be precise.
-        if addr is None:
-            return 'p2wpkh'
-        witver, witprog = segwit_addr.decode_segwit_address(constants.net.SEGWIT_HRP, addr)
-        if witprog is not None:
-            return 'p2wpkh'
+        # if addr is None:
+        #     return 'p2wpkh'
+        # witver, witprog = segwit_addr.decode_segwit_address(constants.net.SEGWIT_HRP, addr)
+        # if witprog is not None:
+        #     return 'p2wpkh'
         addrtype, hash_160_ = b58_address_to_hash160(addr)
         if addrtype == constants.net.ADDRTYPE_P2PKH:
             return 'p2pkh'
-        elif addrtype == constants.net.ADDRTYPE_P2SH:
-            return 'p2wpkh-p2sh'
+        # elif addrtype == constants.net.ADDRTYPE_P2SH:
+        #     return 'p2wpkh-p2sh'
         raise Exception(f'unrecognized address: {repr(addr)}')
 
     @classmethod
@@ -797,7 +797,7 @@ class Transaction:
         return bfh(self.serialize())
 
     def serialize_to_network(self, *, estimate_size=False, include_sigs=True, force_legacy=False) -> str:
-        """Serialize the transaction as used on the Bitcoin network, into hex.
+        """Serialize the transaction as used on the Sapphire network, into hex.
         `include_sigs` signals whether to include scriptSigs and witnesses.
         `force_legacy` signals to use the pre-segwit format
         note: (not include_sigs) implies force_legacy
@@ -1024,8 +1024,8 @@ def tx_from_any(raw: Union[str, bytes], *,
         return PartialTransaction.from_raw_psbt(raw)
     except BadHeaderMagic:
         if raw[:10] == b'EPTF\xff'.hex():
-            raise SerializationError("Partial transactions generated with old Electrum versions "
-                                     "(< 4.0) are no longer supported. Please upgrade Electrum on "
+            raise SerializationError("Partial transactions generated with old Electrum-Sapphire versions "
+                                     "(< 4.0) are no longer supported. Please upgrade Electrum-Sapphire on "
                                      "the other machine where this transaction was created.")
     try:
         tx = Transaction(raw)

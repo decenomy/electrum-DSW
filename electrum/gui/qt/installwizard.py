@@ -1,4 +1,5 @@
 # Copyright (C) 2018 The Electrum developers
+# Copyright (C) 2021 The DECENOMY Core Developers
 # Distributed under the MIT software license, see the accompanying
 # file LICENCE or http://www.opensource.org/licenses/mit-license.php
 
@@ -727,10 +728,10 @@ class InstallWizard(QDialog, MessageBoxMixin, BaseWizard):
         return None
 
     def init_network(self, network: 'Network'):
-        message = _("Electrum communicates with remote servers to get "
+        message = _("Electrum-Sapphire communicates with remote servers to get "
                   "information about your transactions and addresses. The "
                   "servers all fulfill the same purpose only differing in "
-                  "hardware. In most cases you simply want to let Electrum "
+                  "hardware. In most cases you simply want to let Electrum-Sapphire "
                   "pick one at random.  However if you prefer feel free to "
                   "select a server manually.")
         choices = [_("Auto connect"), _("Select server manually")]
