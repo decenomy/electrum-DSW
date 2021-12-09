@@ -26,13 +26,13 @@
 
 import queue
 from collections import defaultdict
-from typing import Sequence, List, Tuple, Optional, Dict, NamedTuple, TYPE_CHECKING, Set
+from typing import Sequence, Tuple, Optional, Dict, TYPE_CHECKING, Set
 import time
 from threading import RLock
 import attr
 from math import inf
 
-from .util import bh2u, profiler, with_lock
+from .util import profiler, with_lock, bh2u
 from .logging import Logger
 from .lnutil import (NUM_MAX_EDGES_IN_PAYMENT_PATH, ShortChannelID, LnFeatures,
                      NBLOCK_CLTV_EXPIRY_TOO_FAR_INTO_FUTURE)
@@ -184,6 +184,8 @@ class LiquidityHint:
         self._cannot_send_backward = None
         self.blacklist_timestamp = 0
         self.hint_timestamp = 0
+        self._inflight_htlcs_forward = 0
+        self._inflight_htlcs_backward = 0
 
     def is_hint_invalid(self) -> bool:
         now = int(time.time())
@@ -274,10 +276,28 @@ class LiquidityHint:
         else:
             self.cannot_send_backward = amount
 
+    def num_inflight_htlcs(self, is_forward_direction: bool) -> int:
+        if is_forward_direction:
+            return self._inflight_htlcs_forward
+        else:
+            return self._inflight_htlcs_backward
+
+    def add_htlc(self, is_forward_direction: bool):
+        if is_forward_direction:
+            self._inflight_htlcs_forward += 1
+        else:
+            self._inflight_htlcs_backward += 1
+
+    def remove_htlc(self, is_forward_direction: bool):
+        if is_forward_direction:
+            self._inflight_htlcs_forward = max(0, self._inflight_htlcs_forward - 1)
+        else:
+            self._inflight_htlcs_backward = max(0, self._inflight_htlcs_forward - 1)
+
     def __repr__(self):
         is_blacklisted = False if not self.blacklist_timestamp else int(time.time()) - self.blacklist_timestamp < BLACKLIST_DURATION
-        return f"forward: can send: {self._can_send_forward} msat, cannot send: {self._cannot_send_forward} msat, \n" \
-               f"backward: can send: {self._can_send_backward} msat, cannot send: {self._cannot_send_backward} msat, \n" \
+        return f"forward: can send: {self._can_send_forward} msat, cannot send: {self._cannot_send_forward} msat, htlcs: {self._inflight_htlcs_forward}\n" \
+               f"backward: can send: {self._can_send_backward} msat, cannot send: {self._cannot_send_backward} msat, htlcs: {self._inflight_htlcs_backward}\n" \
                f"blacklisted: {is_blacklisted}"
 
 
@@ -289,15 +309,13 @@ class LiquidityHintMgr:
     algorithm that favors channels which can route payments and penalizes
     channels that cannot.
     """
-    # TODO: incorporate in-flight htlcs
-    # TODO: use timestamps for can/not_send to make them None after some time?
     # TODO: hints based on node pairs only (shadow channels, non-strict forwarding)?
     def __init__(self):
         self.lock = RLock()
         self._liquidity_hints: Dict[ShortChannelID, LiquidityHint] = {}
 
     @with_lock
-    def get_hint(self, channel_id: ShortChannelID):
+    def get_hint(self, channel_id: ShortChannelID) -> LiquidityHint:
         hint = self._liquidity_hints.get(channel_id)
         if not hint:
             hint = LiquidityHint()
@@ -313,6 +331,16 @@ class LiquidityHintMgr:
     def update_cannot_send(self, node_from: bytes, node_to: bytes, channel_id: ShortChannelID, amount: int):
         hint = self.get_hint(channel_id)
         hint.update_cannot_send(node_from < node_to, amount)
+
+    @with_lock
+    def add_htlc(self, node_from: bytes, node_to: bytes, channel_id: ShortChannelID):
+        hint = self.get_hint(channel_id)
+        hint.add_htlc(node_from < node_to)
+
+    @with_lock
+    def remove_htlc(self, node_from: bytes, node_to: bytes, channel_id: ShortChannelID):
+        hint = self.get_hint(channel_id)
+        hint.remove_htlc(node_from < node_to)
 
     def penalty(self, node_from: bytes, node_to: bytes, channel_id: ShortChannelID, amount: int) -> float:
         """Gives a penalty when sending from node1 to node2 over channel_id with an
@@ -338,16 +366,19 @@ class LiquidityHintMgr:
         # we only evaluate hints here, so use dict get (to not create many hints with self.get_hint)
         hint = self._liquidity_hints.get(channel_id)
         if not hint:
-            can_send, cannot_send = None, None
+            can_send, cannot_send, num_inflight_htlcs = None, None, 0
         else:
             can_send = hint.can_send(node_from < node_to)
             cannot_send = hint.cannot_send(node_from < node_to)
+            num_inflight_htlcs = hint.num_inflight_htlcs(node_from < node_to)
 
         if cannot_send is not None and amount >= cannot_send:
             return inf
         if can_send is not None and amount <= can_send:
             return 0
-        return fee_for_edge_msat(amount, DEFAULT_PENALTY_BASE_MSAT, DEFAULT_PENALTY_PROPORTIONAL_MILLIONTH)
+        success_fee = fee_for_edge_msat(amount, DEFAULT_PENALTY_BASE_MSAT, DEFAULT_PENALTY_PROPORTIONAL_MILLIONTH)
+        inflight_htlc_fee = num_inflight_htlcs * success_fee
+        return success_fee + inflight_htlc_fee
 
     @with_lock
     def add_to_blacklist(self, channel_id: ShortChannelID):
@@ -403,6 +434,14 @@ class LNPathFinder(Logger):
                 self.logger.info(f"report {r.short_channel_id} to be unable to forward {amount_msat} msat")
                 self.liquidity_hints.update_cannot_send(r.start_node, r.end_node, r.short_channel_id, amount_msat)
                 break
+
+    def update_inflight_htlcs(self, route: LNPaymentRoute, add_htlcs: bool):
+        self.logger.info(f"{'Adding' if add_htlcs else 'Removing'} inflight htlcs to graph (liquidity hints).")
+        for r in route:
+            if add_htlcs:
+                self.liquidity_hints.add_htlc(r.start_node, r.end_node, r.short_channel_id)
+            else:
+                self.liquidity_hints.remove_htlc(r.start_node, r.end_node, r.short_channel_id)
 
     def _edge_cost(
             self,
@@ -473,13 +512,13 @@ class LNPathFinder(Logger):
         overall_cost = fee_msat + cltv_cost + liquidity_penalty
         return overall_cost, fee_msat
 
-    def get_distances(
+    def get_shortest_path_hops(
             self,
             *,
             nodeA: bytes,
             nodeB: bytes,
             invoice_amount_msat: int,
-            my_channels: Dict[ShortChannelID, 'Channel'] = None,
+            my_sending_channels: Dict[ShortChannelID, 'Channel'] = None,
             private_route_edges: Dict[ShortChannelID, RouteEdge] = None,
     ) -> Dict[bytes, PathEdge]:
         # note: we don't lock self.channel_db, so while the path finding runs,
@@ -491,38 +530,46 @@ class LNPathFinder(Logger):
         blacklist = self.liquidity_hints.get_blacklist()
         distance_from_start = defaultdict(lambda: float('inf'))
         distance_from_start[nodeB] = 0
-        prev_node = {}  # type: Dict[bytes, PathEdge]
+        previous_hops = {}  # type: Dict[bytes, PathEdge]
         nodes_to_explore = queue.PriorityQueue()
         nodes_to_explore.put((0, invoice_amount_msat, nodeB))  # order of fields (in tuple) matters!
 
         # main loop of search
         while nodes_to_explore.qsize() > 0:
             dist_to_edge_endnode, amount_msat, edge_endnode = nodes_to_explore.get()
-            if edge_endnode == nodeA:
+            if edge_endnode == nodeA and previous_hops:  # previous_hops check for circular paths
+                self.logger.info("found a path")
                 break
             if dist_to_edge_endnode != distance_from_start[edge_endnode]:
                 # queue.PriorityQueue does not implement decrease_priority,
                 # so instead of decreasing priorities, we add items again into the queue.
                 # so there are duplicates in the queue, that we discard now:
                 continue
-            for edge_channel_id in self.channel_db.get_channels_for_node(
-                    edge_endnode, my_channels=my_channels, private_route_edges=private_route_edges):
+
+            if nodeA == nodeB:  # we want circular paths
+                if not previous_hops:  # in the first node exploration step, we only take receiving channels
+                    channels_for_endnode = self.channel_db.get_channels_for_node(
+                        edge_endnode, my_channels={}, private_route_edges=private_route_edges)
+                else:  # in the next steps, we only take sending channels
+                    channels_for_endnode = self.channel_db.get_channels_for_node(
+                        edge_endnode, my_channels=my_sending_channels, private_route_edges={})
+            else:
+                channels_for_endnode = self.channel_db.get_channels_for_node(
+                    edge_endnode, my_channels=my_sending_channels, private_route_edges=private_route_edges)
+
+            for edge_channel_id in channels_for_endnode:
                 assert isinstance(edge_channel_id, bytes)
                 if blacklist and edge_channel_id in blacklist:
                     continue
                 channel_info = self.channel_db.get_channel_info(
-                    edge_channel_id, my_channels=my_channels, private_route_edges=private_route_edges)
+                    edge_channel_id, my_channels=my_sending_channels, private_route_edges=private_route_edges)
                 if channel_info is None:
                     continue
                 edge_startnode = channel_info.node2_id if channel_info.node1_id == edge_endnode else channel_info.node1_id
-                is_mine = edge_channel_id in my_channels
+                is_mine = edge_channel_id in my_sending_channels
                 if is_mine:
                     if edge_startnode == nodeA:  # payment outgoing, on our channel
-                        if not my_channels[edge_channel_id].can_pay(amount_msat, check_frozen=True):
-                            continue
-                    else:  # payment incoming, on our channel. (funny business, cycle weirdness)
-                        assert edge_endnode == nodeA, (bh2u(edge_startnode), bh2u(edge_endnode))
-                        if not my_channels[edge_channel_id].can_receive(amount_msat, check_frozen=True):
+                        if not my_sending_channels[edge_channel_id].can_pay(amount_msat, check_frozen=True):
                             continue
                 edge_cost, fee_for_edge_msat = self._edge_cost(
                     short_channel_id=edge_channel_id,
@@ -531,19 +578,22 @@ class LNPathFinder(Logger):
                     payment_amt_msat=amount_msat,
                     ignore_costs=(edge_startnode == nodeA),
                     is_mine=is_mine,
-                    my_channels=my_channels,
+                    my_channels=my_sending_channels,
                     private_route_edges=private_route_edges)
                 alt_dist_to_neighbour = distance_from_start[edge_endnode] + edge_cost
                 if alt_dist_to_neighbour < distance_from_start[edge_startnode]:
                     distance_from_start[edge_startnode] = alt_dist_to_neighbour
-                    prev_node[edge_startnode] = PathEdge(
+                    previous_hops[edge_startnode] = PathEdge(
                         start_node=edge_startnode,
                         end_node=edge_endnode,
                         short_channel_id=ShortChannelID(edge_channel_id))
                     amount_to_forward_msat = amount_msat + fee_for_edge_msat
                     nodes_to_explore.put((alt_dist_to_neighbour, amount_to_forward_msat, edge_startnode))
-
-        return prev_node
+            # for circular paths, we already explored the end node, but this
+            # is also our start node, so set it to unexplored
+            if edge_endnode == nodeB and nodeA == nodeB:
+                distance_from_start[edge_endnode] = float('inf')
+        return previous_hops
 
     @profiler
     def find_path_for_payment(
@@ -552,32 +602,32 @@ class LNPathFinder(Logger):
             nodeA: bytes,
             nodeB: bytes,
             invoice_amount_msat: int,
-            my_channels: Dict[ShortChannelID, 'Channel'] = None,
+            my_sending_channels: Dict[ShortChannelID, 'Channel'] = None,
             private_route_edges: Dict[ShortChannelID, RouteEdge] = None,
     ) -> Optional[LNPaymentPath]:
         """Return a path from nodeA to nodeB."""
         assert type(nodeA) is bytes
         assert type(nodeB) is bytes
         assert type(invoice_amount_msat) is int
-        if my_channels is None:
-            my_channels = {}
+        if my_sending_channels is None:
+            my_sending_channels = {}
 
-        prev_node = self.get_distances(
+        previous_hops = self.get_shortest_path_hops(
             nodeA=nodeA,
             nodeB=nodeB,
             invoice_amount_msat=invoice_amount_msat,
-            my_channels=my_channels,
+            my_sending_channels=my_sending_channels,
             private_route_edges=private_route_edges)
 
-        if nodeA not in prev_node:
+        if nodeA not in previous_hops:
             return None  # no path found
 
         # backtrack from search_end (nodeA) to search_start (nodeB)
         # FIXME paths cannot be longer than 20 edges (onion packet)...
         edge_startnode = nodeA
         path = []
-        while edge_startnode != nodeB:
-            edge = prev_node[edge_startnode]
+        while edge_startnode != nodeB or not path:  # second condition for circular paths
+            edge = previous_hops[edge_startnode]
             path += [edge]
             edge_startnode = edge.node_id
         return path
@@ -628,7 +678,7 @@ class LNPathFinder(Logger):
             nodeB: bytes,
             invoice_amount_msat: int,
             path = None,
-            my_channels: Dict[ShortChannelID, 'Channel'] = None,
+            my_sending_channels: Dict[ShortChannelID, 'Channel'] = None,
             private_route_edges: Dict[ShortChannelID, RouteEdge] = None,
     ) -> Optional[LNPaymentRoute]:
         route = None
@@ -637,9 +687,9 @@ class LNPathFinder(Logger):
                 nodeA=nodeA,
                 nodeB=nodeB,
                 invoice_amount_msat=invoice_amount_msat,
-                my_channels=my_channels,
+                my_sending_channels=my_sending_channels,
                 private_route_edges=private_route_edges)
         if path:
             route = self.create_route_from_path(
-                path, my_channels=my_channels, private_route_edges=private_route_edges)
+                path, my_channels=my_sending_channels, private_route_edges=private_route_edges)
         return route

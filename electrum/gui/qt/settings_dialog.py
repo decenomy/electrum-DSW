@@ -32,16 +32,15 @@ from PyQt5.QtWidgets import (QComboBox,  QTabWidget,
                              QVBoxLayout, QGridLayout, QLineEdit,
                              QPushButton, QWidget, QHBoxLayout)
 
-from electrum.i18n import _
+from electrum.i18n import _, languages
 from electrum import util, coinchooser, paymentrequest
 from electrum.util import base_units_list
+
+from electrum.gui import messages
 
 from .util import (ColorScheme, WindowModalDialog, HelpLabel, Buttons,
                    CloseButton)
 
-from electrum.i18n import languages
-from electrum import qrscanner
-from electrum.gui import messages
 
 if TYPE_CHECKING:
     from electrum.simple_config import SimpleConfig
@@ -99,8 +98,7 @@ class SettingsDialog(WindowModalDialog):
             if self.config.num_zeros != value:
                 self.config.num_zeros = value
                 self.config.set_key('num_zeros', value, True)
-                self.window.history_list.update()
-                self.window.address_list.update()
+                self.window.need_update.set()
         nz.valueChanged.connect(on_nz)
         gui_widgets.append((nz_label, nz))
 
@@ -131,16 +129,16 @@ class SettingsDialog(WindowModalDialog):
         # lightning
         lightning_widgets = []
 
-        if self.wallet.lnworker and self.wallet.lnworker.has_deterministic_node_id():
-            help_recov = _(messages.MSG_RECOVERABLE_CHANNELS)
-            recov_cb = QCheckBox(_("Create recoverable channels"))
-            recov_cb.setToolTip(messages.to_rtf(help_recov))
-            recov_cb.setChecked(bool(self.config.get('use_recoverable_channels', True)))
-            def on_recov_checked(x):
-                self.config.set_key('use_recoverable_channels', bool(x))
-            recov_cb.stateChanged.connect(on_recov_checked)
-            recov_cb.setEnabled(not bool(self.config.get('lightning_listen')))
-            lightning_widgets.append((recov_cb, None))
+        help_recov = _(messages.MSG_RECOVERABLE_CHANNELS)
+        recov_cb = QCheckBox(_("Create recoverable channels"))
+        enable_toggle_use_recoverable_channels = bool(self.wallet.lnworker and self.wallet.lnworker.can_have_recoverable_channels())
+        recov_cb.setEnabled(enable_toggle_use_recoverable_channels)
+        recov_cb.setToolTip(messages.to_rtf(help_recov))
+        recov_cb.setChecked(bool(self.config.get('use_recoverable_channels', True)) and enable_toggle_use_recoverable_channels)
+        def on_recov_checked(x):
+            self.config.set_key('use_recoverable_channels', bool(x))
+        recov_cb.stateChanged.connect(on_recov_checked)
+        lightning_widgets.append((recov_cb, None))
 
         help_trampoline = _(messages.MSG_HELP_TRAMPOLINE)
         trampoline_cb = QCheckBox(_("Use trampoline routing (disable gossip)"))
@@ -192,6 +190,17 @@ class SettingsDialog(WindowModalDialog):
         self.alias_e.editingFinished.connect(self.on_alias_edit)
         oa_widgets.append((alias_label, self.alias_e))
 
+        msat_cb = QCheckBox(_("Show amounts with msat precision"))
+        msat_cb.setChecked(bool(self.config.get('amt_precision_post_satoshi', False)))
+        def on_msat_checked(v):
+            prec = 3 if v == Qt.Checked else 0
+            if self.config.amt_precision_post_satoshi != prec:
+                self.config.amt_precision_post_satoshi = prec
+                self.config.set_key('amt_precision_post_satoshi', prec)
+                self.window.need_update.set()
+        msat_cb.stateChanged.connect(on_msat_checked)
+        lightning_widgets.append((msat_cb, None))
+
         # units
         units = base_units_list
         msg = (_('Base unit of your wallet.')
@@ -216,17 +225,28 @@ class SettingsDialog(WindowModalDialog):
         unit_combo.currentIndexChanged.connect(lambda x: on_unit(x, nz))
         gui_widgets.append((unit_label, unit_combo))
 
-        system_cameras = qrscanner._find_system_cameras()
+        thousandsep_cb = QCheckBox(_("Add thousand separators to bitcoin amounts"))
+        thousandsep_cb.setChecked(bool(self.config.get('amt_add_thousands_sep', False)))
+        def on_set_thousandsep(v):
+            checked = v == Qt.Checked
+            if self.config.amt_add_thousands_sep != checked:
+                self.config.amt_add_thousands_sep = checked
+                self.config.set_key('amt_add_thousands_sep', checked)
+                self.window.need_update.set()
+        thousandsep_cb.stateChanged.connect(on_set_thousandsep)
+        gui_widgets.append((thousandsep_cb, None))
+
         qr_combo = QComboBox()
-        qr_combo.addItem("Default","default")
-        for camera, device in system_cameras.items():
-            qr_combo.addItem(camera, device)
-        #combo.addItem("Manually specify a device", config.get("video_device"))
+        qr_combo.addItem("Default", "default")
+        msg = (_("For scanning QR codes.") + "\n"
+               + _("Install the zbar package to enable this."))
+        qr_label = HelpLabel(_('Video Device') + ':', msg)
+        from .qrreader import find_system_cameras
+        system_cameras = find_system_cameras()
+        for cam_desc, cam_path in system_cameras.items():
+            qr_combo.addItem(cam_desc, cam_path)
         index = qr_combo.findData(self.config.get("video_device"))
         qr_combo.setCurrentIndex(index)
-        msg = _("Install the zbar package to enable this.")
-        qr_label = HelpLabel(_('Video Device') + ':', msg)
-        qr_combo.setEnabled(qrscanner.libzbar is not None)
         on_video_device = lambda x: self.config.set_key("video_device", qr_combo.itemData(x), True)
         qr_combo.currentIndexChanged.connect(on_video_device)
         gui_widgets.append((qr_label, qr_combo))
@@ -346,7 +366,7 @@ class SettingsDialog(WindowModalDialog):
         msg = _('Choose which online block explorer to use for functions that open a web browser')
         block_ex_label = HelpLabel(_('Online Block Explorer') + ':', msg)
         block_ex_combo = QComboBox()
-        block_ex_custom_e = QLineEdit(self.config.get('block_explorer_custom') or '')
+        block_ex_custom_e = QLineEdit(str(self.config.get('block_explorer_custom') or ''))
         block_ex_combo.addItems(block_explorers)
         block_ex_combo.setCurrentIndex(
             block_ex_combo.findText(util.block_explorer(self.config) or BLOCK_EX_CUSTOM_ITEM))

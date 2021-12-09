@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import PyQt5.QtGui as QtGui
 import PyQt5.QtWidgets as QtWidgets
@@ -9,7 +9,7 @@ from electrum import util
 from electrum.i18n import _
 from electrum.util import bh2u, format_time
 from electrum.lnutil import format_short_channel_id, LOCAL, REMOTE, UpdateAddHtlc, Direction
-from electrum.lnchannel import htlcsum, Channel, AbstractChannel
+from electrum.lnchannel import htlcsum, Channel, AbstractChannel, HTLCWithStatus
 from electrum.lnaddr import LnAddr, lndecode
 from electrum.bitcoin import COIN
 from electrum.wallet import Abstract_Wallet
@@ -43,7 +43,7 @@ class ChannelDetailsDialog(QtWidgets.QDialog, MessageBoxMixin):
         it.appendRow([HTLCItem(_('Payment hash')),HTLCItem(bh2u(i.payment_hash))])
         return it
 
-    def make_model(self, htlcs) -> QtGui.QStandardItemModel:
+    def make_model(self, htlcs: Sequence[HTLCWithStatus]) -> QtGui.QStandardItemModel:
         model = QtGui.QStandardItemModel(0, 2)
         model.setHorizontalHeaderLabels(['HTLC', 'Property value'])
         parentItem = model.invisibleRootItem()
@@ -64,13 +64,13 @@ class ChannelDetailsDialog(QtWidgets.QDialog, MessageBoxMixin):
             self.folders[keyname] = folder
             mapping = {}
             num = 0
-            for item in htlcs:
-                pay_hash, chan_id, i, direction, status = item
-                if status != keyname:
+            for htlc_with_status in htlcs:
+                if htlc_with_status.status != keyname:
                     continue
-                it = self.make_htlc_item(i, direction)
+                htlc = htlc_with_status.htlc
+                it = self.make_htlc_item(htlc, htlc_with_status.direction)
                 self.folders[keyname].appendRow(it)
-                mapping[i.payment_hash] = num
+                mapping[htlc.payment_hash] = num
                 num += 1
             self.keyname_rows[keyname] = mapping
         return model
@@ -83,8 +83,8 @@ class ChannelDetailsDialog(QtWidgets.QDialog, MessageBoxMixin):
         dest_mapping = self.keyname_rows[to]
         dest_mapping[payment_hash] = len(dest_mapping)
 
-    htlc_fulfilled = QtCore.pyqtSignal(str, bytes, bytes)
-    htlc_failed = QtCore.pyqtSignal(str, bytes, bytes)
+    htlc_fulfilled = QtCore.pyqtSignal(str, bytes, Channel, int)
+    htlc_failed = QtCore.pyqtSignal(str, bytes, Channel, int)
     htlc_added = QtCore.pyqtSignal(str, Channel, UpdateAddHtlc, Direction)
     state_changed = QtCore.pyqtSignal(str, Abstract_Wallet, AbstractChannel)
 
@@ -103,16 +103,16 @@ class ChannelDetailsDialog(QtWidgets.QDialog, MessageBoxMixin):
         mapping[htlc.payment_hash] = len(mapping)
         self.folders['inflight'].appendRow(self.make_htlc_item(htlc, direction))
 
-    @QtCore.pyqtSlot(str, bytes, bytes)
-    def on_htlc_fulfilled(self, evtname, payment_hash, chan_id):
-        if chan_id != self.chan.channel_id:
+    @QtCore.pyqtSlot(str, bytes, Channel, int)
+    def on_htlc_fulfilled(self, evtname, payment_hash, chan, htlc_id):
+        if chan.channel_id != self.chan.channel_id:
             return
         self.move('inflight', 'settled', payment_hash)
         self.update()
 
-    @QtCore.pyqtSlot(str, bytes, bytes)
-    def on_htlc_failed(self, evtname, payment_hash, chan_id):
-        if chan_id != self.chan.channel_id:
+    @QtCore.pyqtSlot(str, bytes, Channel, int)
+    def on_htlc_failed(self, evtname, payment_hash, chan, htlc_id):
+        if chan.channel_id != self.chan.channel_id:
             return
         self.move('inflight', 'failed', payment_hash)
         self.update()
@@ -200,9 +200,9 @@ class ChannelDetailsDialog(QtWidgets.QDialog, MessageBoxMixin):
         w = QtWidgets.QTreeView(self)
         htlc_dict = chan.get_payments()
         htlc_list = []
-        for rhash, _list in htlc_dict.items():
-            for _tuple in _list:
-                htlc_list.append((rhash.hex(),) + _tuple)
+        for rhash, plist in htlc_dict.items():
+            for htlc_with_status in plist:
+                htlc_list.append(htlc_with_status)
         w.setModel(self.make_model(htlc_list))
         w.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         vbox.addWidget(w)

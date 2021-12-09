@@ -27,7 +27,11 @@ def configure_dns_depending_on_proxy(is_proxy: bool) -> None:
         socket._getaddrinfo = socket.getaddrinfo
     if is_proxy:
         # prevent dns leaks, see http://stackoverflow.com/questions/13184205/dns-over-proxy
-        socket.getaddrinfo = lambda *args: [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (args[0], args[1]))]
+        def getaddrinfo(host, port, *args, **kwargs):
+            if _is_force_system_dns_for_host(host):
+                return socket._getaddrinfo(host, port, *args, **kwargs)
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', (host, port))]
+        socket.getaddrinfo = getaddrinfo
     else:
         if sys.platform == 'win32':
             # On Windows, socket.getaddrinfo takes a mutex, and might hold it for up to 10 seconds
@@ -57,6 +61,10 @@ def _prepare_windows_dns_hack():
                                                                       thread_name_prefix='dns_resolver')
 
 
+def _is_force_system_dns_for_host(host: str) -> bool:
+    return str(host) in ('localhost', 'localhost.',)
+
+
 def _fast_getaddrinfo(host, *args, **kwargs):
     def needs_dns_resolving(host):
         try:
@@ -64,7 +72,7 @@ def _fast_getaddrinfo(host, *args, **kwargs):
             return False  # already valid IP
         except ValueError:
             pass  # not an IP
-        if str(host) in ('localhost', 'localhost.',):
+        if _is_force_system_dns_for_host(host):
             return False
         return True
 

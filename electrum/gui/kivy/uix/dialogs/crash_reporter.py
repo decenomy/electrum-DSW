@@ -12,7 +12,7 @@ from kivy.utils import platform
 
 from electrum.gui.kivy.i18n import _
 
-from electrum.base_crash_reporter import BaseCrashReporter
+from electrum.base_crash_reporter import BaseCrashReporter, EarlyExceptionsQueue
 from electrum.logging import Logger
 
 
@@ -104,6 +104,7 @@ class CrashReporter(BaseCrashReporter, Factory.Popup):
         self.ids.crash_message.text = BaseCrashReporter.CRASH_MESSAGE
         self.ids.request_help_message.text = BaseCrashReporter.REQUEST_HELP_MESSAGE
         self.ids.describe_error_message.text = BaseCrashReporter.DESCRIBE_ERROR_MESSAGE
+        self.ids.user_message.hint_text = BaseCrashReporter.USER_COMMENT_PLACEHOLDER
 
     def show_contents(self):
         details = CrashReportDetails(self.get_report_string())
@@ -184,6 +185,7 @@ class ExceptionHook(base.ExceptionHandler, Logger):
         base.ExceptionManager.add_handler(self)
         # For everything else:
         sys.excepthook = lambda exctype, value, tb: self.handle_exception(value)
+        EarlyExceptionsQueue.set_hook_as_ready()
 
     def handle_exception(self, _inst):
         exc_info = sys.exc_info()

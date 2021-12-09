@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from kivy.app import App
 from kivy.factory import Factory
 from kivy.properties import ObjectProperty
@@ -14,6 +16,10 @@ from electrum.gui.kivy import KIVY_GUI_PATH
 
 from .choice_dialog import ChoiceDialog
 
+if TYPE_CHECKING:
+    from ...main_window import ElectrumWindow
+
+
 Builder.load_string('''
 #:import partial functools.partial
 #:import _ electrum.gui.kivy.i18n._
@@ -24,6 +30,7 @@ Builder.load_string('''
     title: _('Electrum Settings')
     has_pin_code: False
     use_encryption: False
+    enable_toggle_use_recoverable_channels: False
     BoxLayout:
         orientation: 'vertical'
         ScrollView:
@@ -83,7 +90,8 @@ Builder.load_string('''
                     action: root.change_password
                 CardSeparator
                 SettingsItem:
-                    status: _('Yes') if app.use_recoverable_channels else _('No')
+                    disabled: not root.enable_toggle_use_recoverable_channels
+                    status: _('Yes') if (app.use_recoverable_channels and not self.disabled) else _('No')
                     title: _('Create recoverable channels') + ': ' + self.status
                     description: _("Add channel recovery data to funding transaction.")
                     message: _(messages.MSG_RECOVERABLE_CHANNELS)
@@ -108,7 +116,7 @@ Builder.load_string('''
 
 class SettingsDialog(Factory.Popup):
 
-    def __init__(self, app):
+    def __init__(self, app: 'ElectrumWindow'):
         self.app = app
         self.plugins = self.app.plugins
         self.config = self.app.electrum_config
@@ -122,13 +130,17 @@ class SettingsDialog(Factory.Popup):
         self._unit_dialog = None
         self._coinselect_dialog = None
 
+        self.update()
+
     def update(self):
         self.wallet = self.app.wallet
         self.use_encryption = self.wallet.has_password() if self.wallet else False
         self.has_pin_code = self.app.has_pin_code()
+        self.enable_toggle_use_recoverable_channels = bool(self.wallet.lnworker and self.wallet.lnworker.can_have_recoverable_channels())
 
-    def get_language_name(self):
-        return languages.get(self.config.get('language', 'en_UK'), '')
+    def get_language_name(self) -> str:
+        lang = self.config.get('language') or ''
+        return languages.get(lang) or languages.get('') or ''
 
     def change_password(self, dt):
         self.app.change_password(self.update)
@@ -138,7 +150,7 @@ class SettingsDialog(Factory.Popup):
 
     def language_dialog(self, item, dt):
         if self._language_dialog is None:
-            l = self.config.get('language', 'en_UK')
+            l = self.config.get('language') or ''
             def cb(key):
                 self.config.set_key("language", key, True)
                 item.lang = self.get_language_name()

@@ -37,7 +37,7 @@ from .util import profiler, bfh, TxMinedInfo, UnrelatedTransactionException, wit
 from .transaction import Transaction, TxOutput, TxInput, PartialTxInput, TxOutpoint, PartialTransaction
 from .synchronizer import Synchronizer
 from .verifier import SPV
-from .blockchain import hash_header
+from .blockchain import hash_header, Blockchain
 from .i18n import _
 from .logging import Logger
 
@@ -173,9 +173,6 @@ class AddressSynchronizer(Logger):
             return tx.outputs()[prevout_n].value
         return None
 
-    def get_txout_address(self, txo: TxOutput) -> Optional[str]:
-        return txo.address
-
     def load_unverified_transactions(self):
         # review transactions that are in the history
         for addr in self.db.get_history():
@@ -272,7 +269,7 @@ class AddressSynchronizer(Logger):
                 # it could happen that we think tx is unrelated but actually one of the inputs is is_mine.
                 # this is the main motivation for allow_unrelated
                 is_mine = any([self.is_mine(self.get_txin_address(txin)) for txin in tx.inputs()])
-                is_for_me = any([self.is_mine(self.get_txout_address(txo)) for txo in tx.outputs()])
+                is_for_me = any([self.is_mine(txo.address) for txo in tx.outputs()])
                 if not is_mine and not is_for_me:
                     raise UnrelatedTransactionException()
             # Find all conflicting transactions.
@@ -326,7 +323,7 @@ class AddressSynchronizer(Logger):
                 ser = tx_hash + ':%d'%n
                 scripthash = bitcoin.script_to_scripthash(txo.scriptpubkey.hex())
                 self.db.add_prevout_by_scripthash(scripthash, prevout=TxOutpoint.from_str(ser), value=v)
-                addr = self.get_txout_address(txo)
+                addr = txo.address
                 if addr and self.is_mine(addr):
                     self.db.add_txo_addr(tx_hash, addr, n, v, is_coinbase)
                     self._get_addr_balance_cache.pop(addr, None)  # invalidate cache
@@ -595,7 +592,7 @@ class AddressSynchronizer(Logger):
         with self.lock:
             return dict(self.unverified_tx)  # copy
 
-    def undo_verifications(self, blockchain, above_height):
+    def undo_verifications(self, blockchain: Blockchain, above_height: int) -> Set[str]:
         '''Used by the verifier when a reorg has happened'''
         txs = set()
         with self.lock:

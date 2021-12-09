@@ -18,15 +18,17 @@ from electrum.plugin import run_hook
 from electrum import util
 from electrum.util import (profiler, InvalidPassword, send_exception_to_crash_reporter,
                            format_satoshis, format_satoshis_plain, format_fee_satoshis,
-                           maybe_extract_bolt11_invoice)
+                           maybe_extract_bolt11_invoice, parse_max_spend)
 from electrum.invoices import PR_PAID, PR_FAILED
 from electrum import blockchain
 from electrum.network import Network, TxBroadcastError, BestEffortRequestFailed
 from electrum.interface import PREFERRED_NETWORK_PROTOCOL, ServerAddr
 from electrum.logging import Logger
+from electrum.bitcoin import COIN
 
 from electrum.gui import messages
 from .i18n import _
+from .util import get_default_language
 from . import KIVY_GUI_PATH
 
 from kivy.app import App
@@ -122,14 +124,25 @@ class ElectrumWindow(App, Logger):
 
     auto_connect = BooleanProperty(False)
     def on_auto_connect(self, instance, x):
+        if not self._init_finished:
+            return
         net_params = self.network.get_parameters()
         net_params = net_params._replace(auto_connect=self.auto_connect)
         self.network.run_from_another_thread(self.network.set_parameters(net_params))
+
+    def set_auto_connect(self, b: bool):
+        # This method makes sure we persist x into the config even if self.auto_connect == b.
+        # Note: on_auto_connect() only gets called if the value of the self.auto_connect property *changes*.
+        self.electrum_config.set_key('auto_connect', b)
+        self.auto_connect = b
+
     def toggle_auto_connect(self, x):
         self.auto_connect = not self.auto_connect
 
     oneserver = BooleanProperty(False)
     def on_oneserver(self, instance, x):
+        if not self._init_finished:
+            return
         net_params = self.network.get_parameters()
         net_params = net_params._replace(oneserver=self.oneserver)
         self.network.run_from_another_thread(self.network.set_parameters(net_params))
@@ -228,10 +241,8 @@ class ElectrumWindow(App, Logger):
     def on_new_intent(self, intent):
         data = str(intent.getDataString())
         scheme = str(intent.getScheme()).lower()
-        if scheme == BITCOIN_BIP21_URI_SCHEME:
+        if scheme == BITCOIN_BIP21_URI_SCHEME or scheme == LIGHTNING_URI_SCHEME:
             self.set_URI(data)
-        elif scheme == LIGHTNING_URI_SCHEME:
-            self.set_ln_invoice(data)
 
     def on_language(self, instance, language):
         self.logger.info('language: {}'.format(language))
@@ -318,7 +329,7 @@ class ElectrumWindow(App, Logger):
         rate = self.fx.exchange_rate()
         if rate.is_nan():
             return ''
-        fiat_amount = self.get_amount(amount_str + ' ' + self.base_unit) * rate / pow(10, 8)
+        fiat_amount = self.get_amount(amount_str + ' ' + self.base_unit) * rate / COIN
         return "{:.2f}".format(fiat_amount).rstrip('0').rstrip('.')
 
     def fiat_to_btc(self, fiat_amount):
@@ -327,10 +338,12 @@ class ElectrumWindow(App, Logger):
         rate = self.fx.exchange_rate()
         if rate.is_nan():
             return ''
-        satoshis = int(pow(10,8) * Decimal(fiat_amount) / Decimal(rate))
+        satoshis = COIN * Decimal(fiat_amount) / Decimal(rate)
         return format_satoshis_plain(satoshis, decimal_point=self.decimal_point())
 
-    def get_amount(self, amount_str):
+    def get_amount(self, amount_str: str) -> Optional[int]:
+        if not amount_str:
+            return None
         a, u = amount_str.split()
         assert u == self.base_unit
         try:
@@ -370,6 +383,8 @@ class ElectrumWindow(App, Logger):
     :data:`ui_mode` is a read only `AliasProperty` Defaults to 'phone'
     '''
 
+    _init_finished = False
+
     def __init__(self, **kwargs):
         # initialize variables
         self._clipboard = Clipboard
@@ -388,7 +403,7 @@ class ElectrumWindow(App, Logger):
         Logger.__init__(self)
 
         self.electrum_config = config = kwargs.get('config', None)  # type: SimpleConfig
-        self.language = config.get('language', 'en')
+        self.language = config.get('language', get_default_language())
         self.network = network = kwargs.get('network', None)  # type: Network
         if self.network:
             self.num_blocks = self.network.get_local_height()
@@ -425,6 +440,8 @@ class ElectrumWindow(App, Logger):
         self.invoice_popup = None
         self.request_popup = None
 
+        self._init_finished = True
+
     def on_pr(self, pr: 'PaymentRequest'):
         if not self.wallet:
             self.show_error(_('No wallet loaded.'))
@@ -444,7 +461,7 @@ class ElectrumWindow(App, Logger):
             self.show_error("invoice error:" + pr.error)
             self.send_screen.do_clear()
 
-    def on_qr(self, data):
+    def on_qr(self, data: str):
         from electrum.bitcoin import is_address
         data = data.strip()
         if is_address(data):
@@ -548,7 +565,8 @@ class ElectrumWindow(App, Logger):
         try:
             video_dev = self.electrum_config.get_video_device()
             data = qrscanner.scan_barcode(video_dev)
-            on_complete(data)
+            if data is not None:
+                on_complete(data)
         except UserFacingException as e:
             self.show_error(e)
         except BaseException as e:
@@ -637,12 +655,17 @@ class ElectrumWindow(App, Logger):
             util.register_callback(self.on_channel_db, ['channel_db'])
             util.register_callback(self.set_num_peers, ['gossip_peers'])
             util.register_callback(self.set_unknown_channels, ['unknown_channels'])
-        # load wallet
-        self.load_wallet_by_name(self.electrum_config.get_wallet_path(use_gui_last_wallet=True))
-        # URI passed in config
-        uri = self.electrum_config.get('url')
-        if uri:
-            self.set_URI(uri)
+        
+        if self.network and self.electrum_config.get('auto_connect') is None:
+            self.popup_dialog("first_screen")
+            # load_wallet_on_start will be called later, after initial network setup is completed
+        else:
+            # load wallet
+            self.load_wallet_on_start()
+            # URI passed in config
+            uri = self.electrum_config.get('url')
+            if uri:
+                self.set_URI(uri)
 
     def on_channel_db(self, event, num_nodes, num_channels, num_policies):
         self.lightning_gossip_num_nodes = num_nodes
@@ -689,6 +712,10 @@ class ElectrumWindow(App, Logger):
         d = OpenWalletDialog(self, path, self.on_open_wallet)
         d.open()
 
+    def load_wallet_on_start(self):
+        """As part of app startup, try to load last wallet."""
+        self.load_wallet_by_name(self.electrum_config.get_wallet_path(use_gui_last_wallet=True))
+
     def on_open_wallet(self, password, storage):
         if not storage.file_exists():
             wizard = InstallWizard(self.electrum_config, self.plugins)
@@ -723,7 +750,8 @@ class ElectrumWindow(App, Logger):
         from .uix.dialogs.settings import SettingsDialog
         if self._settings_dialog is None:
             self._settings_dialog = SettingsDialog(self)
-        self._settings_dialog.update()
+        else:
+            self._settings_dialog.update()
         self._settings_dialog.open()
 
     def lightning_open_channel_dialog(self):
@@ -956,20 +984,24 @@ class ElectrumWindow(App, Logger):
         return format_satoshis_plain(amount_after_all_fees, decimal_point=self.decimal_point())
 
     def format_amount(self, x, is_diff=False, whitespaces=False):
-        return format_satoshis(
-            x,
-            num_zeros=0,
-            decimal_point=self.decimal_point(),
-            is_diff=is_diff,
-            whitespaces=whitespaces,
-        )
+        return self.electrum_config.format_amount(x, is_diff=is_diff, whitespaces=whitespaces)
 
     def format_amount_and_units(self, x) -> str:
         if x is None:
             return 'none'
-        if x == '!':
-            return 'max'
+        if parse_max_spend(x):
+            return f'max({x})'
+        # FIXME this is using format_satoshis_plain instead of config.format_amount
+        #       as we sometimes convert the returned string back to numbers,
+        #       via self.get_amount()... the need for converting back should be removed
         return format_satoshis_plain(x, decimal_point=self.decimal_point()) + ' ' + self.base_unit
+
+    def format_amount_and_units_with_fiat(self, x) -> str:
+        text = self.format_amount_and_units(x)
+        fiat = self.fx.format_amount_and_units(x) if self.fx else None
+        if text and fiat:
+            text += f' ({fiat})'
+        return text
 
     def format_fee_rate(self, fee_rate):
         # fee_rate is in sat/kB
@@ -1183,7 +1215,8 @@ class ElectrumWindow(App, Logger):
         from .uix.dialogs.addresses import AddressesDialog
         if self._addresses_dialog is None:
             self._addresses_dialog = AddressesDialog(self)
-        self._addresses_dialog.update()
+        else:
+            self._addresses_dialog.update()
         self._addresses_dialog.open()
 
     def fee_dialog(self):
@@ -1335,7 +1368,6 @@ class ElectrumWindow(App, Logger):
                 self.show_error(_("Backup NOT saved. Backup directory not configured."))
             return
 
-        backup_dir = util.android_backup_dir()
         from android.permissions import request_permissions, Permission
         def cb(permissions, grant_results: Sequence[bool]):
             if not grant_results or not grant_results[0]:
@@ -1343,6 +1375,7 @@ class ElectrumWindow(App, Logger):
                 return
             # note: Clock.schedule_once is a hack so that we get called on a non-daemon thread
             #       (needed for WalletDB.write)
+            backup_dir = util.android_backup_dir()
             Clock.schedule_once(lambda dt: self._save_backup(backup_dir))
         request_permissions([Permission.WRITE_EXTERNAL_STORAGE], cb)
 
