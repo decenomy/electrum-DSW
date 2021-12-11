@@ -150,7 +150,7 @@ class ConfirmTxDialog(TxEditor, WindowModalDialog):
               + _('A suggested fee is automatically added to this field. You may override it. The suggested fee increases with the size of the transaction.')
         self.fee_label = QLabel('')
         self.fee_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        grid.addWidget(HelpLabel(_("Mining fee") + ": ", msg), 1, 0)
+        grid.addWidget(HelpLabel(_("Minting fee") + ": ", msg), 1, 0)
         grid.addWidget(self.fee_label, 1, 1)
 
         self.extra_fee_label = QLabel(_("Additional fees") + ": ")

@@ -234,7 +234,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
                 tabs.addTab(tab, icon, description.replace("&", ""))
 
         add_optional_tab(tabs, self.addresses_tab, read_QIcon("tab_addresses.png"), _("&Addresses"), "addresses")
-        add_optional_tab(tabs, self.channels_tab, read_QIcon("lightning.png"), _("Channels"), "channels")
+        #add_optional_tab(tabs, self.channels_tab, read_QIcon("lightning.png"), _("Channels"), "channels")
         add_optional_tab(tabs, self.utxo_tab, read_QIcon("tab_coins.png"), _("Co&ins"), "utxo")
         add_optional_tab(tabs, self.contacts_tab, read_QIcon("tab_contacts.png"), _("Con&tacts"), "contacts")
         add_optional_tab(tabs, self.console_tab, read_QIcon("tab_console.png"), _("Con&sole"), "console")
@@ -736,7 +736,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         view_menu = menubar.addMenu(_("&View"))
         add_toggle_action(view_menu, self.addresses_tab)
         add_toggle_action(view_menu, self.utxo_tab)
-        add_toggle_action(view_menu, self.channels_tab)
+        #add_toggle_action(view_menu, self.channels_tab)
         add_toggle_action(view_menu, self.contacts_tab)
         add_toggle_action(view_menu, self.console_tab)
 
@@ -754,7 +754,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         tools_menu.addAction(_("&Network"), self.gui_object.show_network_dialog).setEnabled(bool(self.network))
         if self.network and self.network.local_watchtower:
             tools_menu.addAction(_("Local &Watchtower"), self.gui_object.show_watchtower_dialog)
-        tools_menu.addAction(_("&Plugins"), self.plugins_dialog)
+        #tools_menu.addAction(_("&Plugins"), self.plugins_dialog)
         tools_menu.addSeparator()
         tools_menu.addAction(_("&Sign/verify message"), self.sign_verify_message)
         tools_menu.addAction(_("&Encrypt/decrypt message"), self.encrypt_message)
@@ -772,15 +772,15 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
 
         help_menu = menubar.addMenu(_("&Help"))
         help_menu.addAction(_("&About"), self.show_about)
-        help_menu.addAction(_("&Check for updates"), self.show_update_check)
-        help_menu.addAction(_("&Official website"), lambda: webopen("https://electrum.org"))
-        help_menu.addSeparator()
-        help_menu.addAction(_("&Documentation"), lambda: webopen("http://docs.electrum.org/")).setShortcut(QKeySequence.HelpContents)
+        #help_menu.addAction(_("&Check for updates"), self.show_update_check)
+        help_menu.addAction(_("&Official website"), lambda: webopen("https://sappcoin.com"))
+        #help_menu.addSeparator()
+        #help_menu.addAction(_("&Documentation"), lambda: webopen("http://docs.electrum.org/")).setShortcut(QKeySequence.HelpContents)
         # if not constants.net.TESTNET:
         #     help_menu.addAction(_("&Bitcoin Paper"), self.show_bitcoin_paper)
-        help_menu.addAction(_("&Report Bug"), self.show_report_bug)
-        help_menu.addSeparator()
-        help_menu.addAction(_("&Donate to server"), self.donate_to_server)
+        #help_menu.addAction(_("&Report Bug"), self.show_report_bug)
+        #help_menu.addSeparator()
+        #help_menu.addAction(_("&Donate to server"), self.donate_to_server)
 
         self.setMenuBar(menubar)
 
@@ -1484,7 +1484,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         # show tooltip explaining max amount
         mining_fee = tx.get_fee()
         mining_fee_str = self.format_amount_and_units(mining_fee)
-        msg = _("Mining fee: {} (can be adjusted on next screen)").format(mining_fee_str)
+        msg = _("Minting fee: {} (can be adjusted on next screen)").format(mining_fee_str)
         if x_fee_amount:
             twofactor_fee_str = self.format_amount_and_units(x_fee_amount)
             msg += "\n" + _("2fa fee: {} (for the next batch of transactions)").format(twofactor_fee_str)
@@ -2484,44 +2484,44 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
             grid.addWidget(WWLabel(_("Keystore type") + ':'), 4, 0)
             ks_type = str(keystore_types[0]) if keystore_types else _('No keystore')
             grid.addWidget(WWLabel(ks_type), 4, 1)
-        # lightning
-        grid.addWidget(WWLabel(_('Lightning') + ':'), 5, 0)
-        from .util import IconLabel
-        if self.wallet.has_lightning():
-            if self.wallet.lnworker.has_deterministic_node_id():
-                grid.addWidget(WWLabel(_('Enabled')), 5, 1)
-            else:
-                label = IconLabel(text='Enabled, non-recoverable channels')
-                label.setIcon(read_QIcon('nocloud'))
-                grid.addWidget(label, 5, 1)
-                if self.wallet.db.get('seed_type') == 'segwit':
-                    msg = _("Your channels cannot be recovered from seed, because they were created with an old version of Electrum-Sapphire. "
-                            "This means that you must save a backup of your wallet everytime you create a new channel.\n\n"
-                            "If you want this wallet to have recoverable channels, you must close your existing channels and restore this wallet from seed")
-                else:
-                    msg = _("Your channels cannot be recovered from seed. "
-                            "This means that you must save a backup of your wallet everytime you create a new channel.\n\n"
-                            "If you want to have recoverable channels, you must create a new wallet with an Electrum-Sapphire seed")
-                grid.addWidget(HelpButton(msg), 5, 3)
-            grid.addWidget(WWLabel(_('Lightning Node ID:')), 7, 0)
-            # TODO: ButtonsLineEdit should have a addQrButton method
-            nodeid_text = self.wallet.lnworker.node_keypair.pubkey.hex()
-            nodeid_e = ButtonsLineEdit(nodeid_text)
-            qr_icon = "qrcode_white.png" if ColorScheme.dark_scheme else "qrcode.png"
-            nodeid_e.addButton(qr_icon, lambda: self.show_qrcode(nodeid_text, _("Node ID")), _("Show QR Code"))
-            nodeid_e.addCopyButton(self.app)
-            nodeid_e.setReadOnly(True)
-            nodeid_e.setFont(QFont(MONOSPACE_FONT))
-            grid.addWidget(nodeid_e, 8, 0, 1, 4)
-        else:
-            if self.wallet.can_have_lightning():
-                grid.addWidget(WWLabel('Not enabled'), 5, 1)
-                button = QPushButton(_("Enable"))
-                button.pressed.connect(lambda: self.init_lightning_dialog(dialog))
-                grid.addWidget(button, 5, 3)
-            else:
-                grid.addWidget(WWLabel(_("Not available for this wallet.")), 5, 1)
-                grid.addWidget(HelpButton(_("Lightning is currently restricted to HD wallets with p2wpkh addresses.")), 5, 2)
+        # # lightning
+        # grid.addWidget(WWLabel(_('Lightning') + ':'), 5, 0)
+        # from .util import IconLabel
+        # if self.wallet.has_lightning():
+        #     if self.wallet.lnworker.has_deterministic_node_id():
+        #         grid.addWidget(WWLabel(_('Enabled')), 5, 1)
+        #     else:
+        #         label = IconLabel(text='Enabled, non-recoverable channels')
+        #         label.setIcon(read_QIcon('nocloud'))
+        #         grid.addWidget(label, 5, 1)
+        #         if self.wallet.db.get('seed_type') == 'segwit':
+        #             msg = _("Your channels cannot be recovered from seed, because they were created with an old version of Electrum-Sapphire. "
+        #                     "This means that you must save a backup of your wallet everytime you create a new channel.\n\n"
+        #                     "If you want this wallet to have recoverable channels, you must close your existing channels and restore this wallet from seed")
+        #         else:
+        #             msg = _("Your channels cannot be recovered from seed. "
+        #                     "This means that you must save a backup of your wallet everytime you create a new channel.\n\n"
+        #                     "If you want to have recoverable channels, you must create a new wallet with an Electrum-Sapphire seed")
+        #         grid.addWidget(HelpButton(msg), 5, 3)
+        #     grid.addWidget(WWLabel(_('Lightning Node ID:')), 7, 0)
+        #     # TODO: ButtonsLineEdit should have a addQrButton method
+        #     nodeid_text = self.wallet.lnworker.node_keypair.pubkey.hex()
+        #     nodeid_e = ButtonsLineEdit(nodeid_text)
+        #     qr_icon = "qrcode_white.png" if ColorScheme.dark_scheme else "qrcode.png"
+        #     nodeid_e.addButton(qr_icon, lambda: self.show_qrcode(nodeid_text, _("Node ID")), _("Show QR Code"))
+        #     nodeid_e.addCopyButton(self.app)
+        #     nodeid_e.setReadOnly(True)
+        #     nodeid_e.setFont(QFont(MONOSPACE_FONT))
+        #     grid.addWidget(nodeid_e, 8, 0, 1, 4)
+        # else:
+        #     if self.wallet.can_have_lightning():
+        #         grid.addWidget(WWLabel('Not enabled'), 5, 1)
+        #         button = QPushButton(_("Enable"))
+        #         button.pressed.connect(lambda: self.init_lightning_dialog(dialog))
+        #         grid.addWidget(button, 5, 3)
+        #     else:
+        #         grid.addWidget(WWLabel(_("Not available for this wallet.")), 5, 1)
+        #         grid.addWidget(HelpButton(_("Lightning is currently restricted to HD wallets with p2wpkh addresses.")), 5, 2)
         vbox.addLayout(grid)
 
         labels_clayout = None

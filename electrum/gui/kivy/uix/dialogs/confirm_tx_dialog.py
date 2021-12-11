@@ -45,7 +45,7 @@ Builder.load_string('''
             orientation: 'horizontal'
             size_hint: 1, 0.5
             Label:
-                text: _('Mining fee:')
+                text: _('Minting fee:')
             Label:
                 id: fee_label
                 text: ''

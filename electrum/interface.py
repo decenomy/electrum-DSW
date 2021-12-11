@@ -45,6 +45,8 @@ from aiorpcx.jsonrpc import JSONRPC, CodeMessageError
 from aiorpcx.rawsocket import RSClient
 import certifi
 
+from electrum.simple_config import FEERATE_DEFAULT_RELAY
+
 from .util import (ignore_exceptions, log_exceptions, bfh, SilentTaskGroup, MySocksProxy,
                    is_integer, is_non_negative_integer, is_hash256_str, is_hex_str,
                    is_int_or_float, is_non_negative_int_or_float)
@@ -737,7 +739,7 @@ class Interface(Logger):
         if next_height is None:
             next_height = self.tip
         last = None
-        while last is None or height <= next_height:
+        while last is None or height < next_height:
             prev_last, prev_height = last, height
             if next_height > height + 10:
                 could_connect, num_headers = await self.request_chunk(height, next_height)
@@ -1082,6 +1084,8 @@ class Interface(Logger):
         if res != -1:
             assert_non_negative_int_or_float(res)
             res = int(res * bitcoin.COIN)
+        else:
+            res = FEERATE_DEFAULT_RELAY
         return res
 
 

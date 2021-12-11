@@ -61,7 +61,7 @@ class SettingsDialog(WindowModalDialog):
         tabs = QTabWidget()
         gui_widgets = []
         tx_widgets = []
-        oa_widgets = []
+        #oa_widgets = []
 
         # language
         lang_help = _('Select which language is used in the GUI (after restart).')
@@ -126,80 +126,80 @@ class SettingsDialog(WindowModalDialog):
         batch_rbf_cb.stateChanged.connect(on_batch_rbf)
         tx_widgets.append((batch_rbf_cb, None))
 
-        # lightning
-        lightning_widgets = []
+        # # lightning
+        # lightning_widgets = []
 
-        help_recov = _(messages.MSG_RECOVERABLE_CHANNELS)
-        recov_cb = QCheckBox(_("Create recoverable channels"))
-        enable_toggle_use_recoverable_channels = bool(self.wallet.lnworker and self.wallet.lnworker.can_have_recoverable_channels())
-        recov_cb.setEnabled(enable_toggle_use_recoverable_channels)
-        recov_cb.setToolTip(messages.to_rtf(help_recov))
-        recov_cb.setChecked(bool(self.config.get('use_recoverable_channels', True)) and enable_toggle_use_recoverable_channels)
-        def on_recov_checked(x):
-            self.config.set_key('use_recoverable_channels', bool(x))
-        recov_cb.stateChanged.connect(on_recov_checked)
-        lightning_widgets.append((recov_cb, None))
+        # help_recov = _(messages.MSG_RECOVERABLE_CHANNELS)
+        # recov_cb = QCheckBox(_("Create recoverable channels"))
+        # enable_toggle_use_recoverable_channels = bool(self.wallet.lnworker and self.wallet.lnworker.can_have_recoverable_channels())
+        # recov_cb.setEnabled(enable_toggle_use_recoverable_channels)
+        # recov_cb.setToolTip(messages.to_rtf(help_recov))
+        # recov_cb.setChecked(bool(self.config.get('use_recoverable_channels', True)) and enable_toggle_use_recoverable_channels)
+        # def on_recov_checked(x):
+        #     self.config.set_key('use_recoverable_channels', bool(x))
+        # recov_cb.stateChanged.connect(on_recov_checked)
+        # lightning_widgets.append((recov_cb, None))
 
-        help_trampoline = _(messages.MSG_HELP_TRAMPOLINE)
-        trampoline_cb = QCheckBox(_("Use trampoline routing (disable gossip)"))
-        trampoline_cb.setToolTip(messages.to_rtf(help_trampoline))
-        trampoline_cb.setChecked(not bool(self.config.get('use_gossip', False)))
-        def on_trampoline_checked(use_trampoline):
-            use_gossip = not bool(use_trampoline)
-            self.config.set_key('use_gossip', use_gossip)
-            if use_gossip:
-                self.window.network.start_gossip()
-            else:
-                self.window.network.run_from_another_thread(
-                    self.window.network.stop_gossip())
-            util.trigger_callback('ln_gossip_sync_progress')
-            # FIXME: update all wallet windows
-            util.trigger_callback('channels_updated', self.wallet)
-        trampoline_cb.stateChanged.connect(on_trampoline_checked)
-        lightning_widgets.append((trampoline_cb, None))
+        # help_trampoline = _(messages.MSG_HELP_TRAMPOLINE)
+        # trampoline_cb = QCheckBox(_("Use trampoline routing (disable gossip)"))
+        # trampoline_cb.setToolTip(messages.to_rtf(help_trampoline))
+        # trampoline_cb.setChecked(not bool(self.config.get('use_gossip', False)))
+        # def on_trampoline_checked(use_trampoline):
+        #     use_gossip = not bool(use_trampoline)
+        #     self.config.set_key('use_gossip', use_gossip)
+        #     if use_gossip:
+        #         self.window.network.start_gossip()
+        #     else:
+        #         self.window.network.run_from_another_thread(
+        #             self.window.network.stop_gossip())
+        #     util.trigger_callback('ln_gossip_sync_progress')
+        #     # FIXME: update all wallet windows
+        #     util.trigger_callback('channels_updated', self.wallet)
+        # trampoline_cb.stateChanged.connect(on_trampoline_checked)
+        # lightning_widgets.append((trampoline_cb, None))
 
-        help_remote_wt = ' '.join([
-            _("A watchtower is a daemon that watches your channels and prevents the other party from stealing funds by broadcasting an old state."),
-            _("If you have private a watchtower, enter its URL here."),
-            _("Check our online documentation if you want to configure Electrum-Sapphire as a watchtower."),
-        ])
-        remote_wt_cb = QCheckBox(_("Use a remote watchtower"))
-        remote_wt_cb.setToolTip('<p>'+help_remote_wt+'</p>')
-        remote_wt_cb.setChecked(bool(self.config.get('use_watchtower', False)))
-        def on_remote_wt_checked(x):
-            self.config.set_key('use_watchtower', bool(x))
-            self.watchtower_url_e.setEnabled(bool(x))
-        remote_wt_cb.stateChanged.connect(on_remote_wt_checked)
-        watchtower_url = self.config.get('watchtower_url')
-        self.watchtower_url_e = QLineEdit(watchtower_url)
-        self.watchtower_url_e.setEnabled(self.config.get('use_watchtower', False))
-        def on_wt_url():
-            url = self.watchtower_url_e.text() or None
-            watchtower_url = self.config.set_key('watchtower_url', url)
-        self.watchtower_url_e.editingFinished.connect(on_wt_url)
-        lightning_widgets.append((remote_wt_cb, self.watchtower_url_e))
+        # help_remote_wt = ' '.join([
+        #     _("A watchtower is a daemon that watches your channels and prevents the other party from stealing funds by broadcasting an old state."),
+        #     _("If you have private a watchtower, enter its URL here."),
+        #     _("Check our online documentation if you want to configure Electrum-Sapphire as a watchtower."),
+        # ])
+        # remote_wt_cb = QCheckBox(_("Use a remote watchtower"))
+        # remote_wt_cb.setToolTip('<p>'+help_remote_wt+'</p>')
+        # remote_wt_cb.setChecked(bool(self.config.get('use_watchtower', False)))
+        # def on_remote_wt_checked(x):
+        #     self.config.set_key('use_watchtower', bool(x))
+        #     self.watchtower_url_e.setEnabled(bool(x))
+        # remote_wt_cb.stateChanged.connect(on_remote_wt_checked)
+        # watchtower_url = self.config.get('watchtower_url')
+        # self.watchtower_url_e = QLineEdit(watchtower_url)
+        # self.watchtower_url_e.setEnabled(self.config.get('use_watchtower', False))
+        # def on_wt_url():
+        #     url = self.watchtower_url_e.text() or None
+        #     watchtower_url = self.config.set_key('watchtower_url', url)
+        # self.watchtower_url_e.editingFinished.connect(on_wt_url)
+        # lightning_widgets.append((remote_wt_cb, self.watchtower_url_e))
 
-        msg = _('OpenAlias record, used to receive coins and to sign payment requests.') + '\n\n'\
-              + _('The following alias providers are available:') + '\n'\
-              + '\n'.join(['https://cryptoname.co/', 'http://xmr.link']) + '\n\n'\
-              + 'For more information, see https://openalias.org'
-        alias_label = HelpLabel(_('OpenAlias') + ':', msg)
-        alias = self.config.get('alias','')
-        self.alias_e = QLineEdit(alias)
-        self.set_alias_color()
-        self.alias_e.editingFinished.connect(self.on_alias_edit)
-        oa_widgets.append((alias_label, self.alias_e))
+        # msg = _('OpenAlias record, used to receive coins and to sign payment requests.') + '\n\n'\
+        #       + _('The following alias providers are available:') + '\n'\
+        #       + '\n'.join(['https://cryptoname.co/', 'http://xmr.link']) + '\n\n'\
+        #       + 'For more information, see https://openalias.org'
+        # alias_label = HelpLabel(_('OpenAlias') + ':', msg)
+        # alias = self.config.get('alias','')
+        # self.alias_e = QLineEdit(alias)
+        # self.set_alias_color()
+        # self.alias_e.editingFinished.connect(self.on_alias_edit)
+        # oa_widgets.append((alias_label, self.alias_e))
 
-        msat_cb = QCheckBox(_("Show amounts with msat precision"))
-        msat_cb.setChecked(bool(self.config.get('amt_precision_post_satoshi', False)))
-        def on_msat_checked(v):
-            prec = 3 if v == Qt.Checked else 0
-            if self.config.amt_precision_post_satoshi != prec:
-                self.config.amt_precision_post_satoshi = prec
-                self.config.set_key('amt_precision_post_satoshi', prec)
-                self.window.need_update.set()
-        msat_cb.stateChanged.connect(on_msat_checked)
-        lightning_widgets.append((msat_cb, None))
+        # msat_cb = QCheckBox(_("Show amounts with msat precision"))
+        # msat_cb.setChecked(bool(self.config.get('amt_precision_post_satoshi', False)))
+        # def on_msat_checked(v):
+        #     prec = 3 if v == Qt.Checked else 0
+        #     if self.config.amt_precision_post_satoshi != prec:
+        #         self.config.amt_precision_post_satoshi = prec
+        #         self.config.set_key('amt_precision_post_satoshi', prec)
+        #         self.window.need_update.set()
+        # msat_cb.stateChanged.connect(on_msat_checked)
+        # lightning_widgets.append((msat_cb, None))
 
         # units
         units = base_units_list
@@ -268,7 +268,7 @@ class SettingsDialog(WindowModalDialog):
         def on_set_updatecheck(v):
             self.config.set_key('check_updates', v == Qt.Checked, save=True)
         updatecheck_cb.stateChanged.connect(on_set_updatecheck)
-        gui_widgets.append((updatecheck_cb, None))
+        #gui_widgets.append((updatecheck_cb, None))
 
         filelogging_cb = QCheckBox(_("Write logs to file"))
         filelogging_cb.setChecked(bool(self.config.get('log_to_file', False)))
@@ -501,9 +501,9 @@ class SettingsDialog(WindowModalDialog):
         tabs_info = [
             (gui_widgets, _('General')),
             (tx_widgets, _('Transactions')),
-            (lightning_widgets, _('Lightning')),
+            #(lightning_widgets, _('Lightning')),
             (fiat_widgets, _('Fiat')),
-            (oa_widgets, _('OpenAlias')),
+            #(oa_widgets, _('OpenAlias')),
         ]
         for widgets, name in tabs_info:
             tab = QWidget()
