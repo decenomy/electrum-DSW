@@ -4,9 +4,6 @@ attrs==21.2.0 \
 base58==2.1.1 \
     --hash=sha256:11a36f4d3ce51dfc1043f3218591ac4eb1ceb172919cebe05b52a5bcc8d245c2 \
     --hash=sha256:c5d0cb3f5b6e81e8e35da5754388ddcc6d0d14b6c6a132cb93d69ed580a7278c
-bitbox02==5.3.0 \
-    --hash=sha256:797e6904d431f6d2ef711f169e7ce8fffc125cc8c5b3efb8187fd451f45635e1 \
-    --hash=sha256:fe0e8aeb9b32fd7d76bb3e9838895973a74dfd532a8fb8ac174a1a60214aee26
 btchip-python==0.1.32 \
     --hash=sha256:34f5e0c161c08f65dc0d070ba2ff4c315ed21c4b7e0faa32a46862d0dc1b8f55
 certifi==2021.10.8 \
@@ -66,9 +63,6 @@ cffi==1.15.0 \
 charset-normalizer==2.0.7 \
     --hash=sha256:e019de665e2bcf9c2b64e2e5aa025fa991da8720daa3c1138cadd2fd1856aed0 \
     --hash=sha256:f7af805c321bfa1ce6714c51f254e0d5bb5e5834039bc17db7ebe3a4cec9492b
-ckcc-protocol==1.1.0 \
-    --hash=sha256:2652cb4cdc1fda23db72129d80d2e4403f33fb695ea048c7ae8a5010d7a6c62d \
-    --hash=sha256:b660225ac06fc06ad17b33ece428126eef785388450e14313f72d25d4082c5ab
 click==8.0.3 \
     --hash=sha256:353f466495adaeb40b6b5f592f9f91cb22372351c84caeb068132442a4518ef3 \
     --hash=sha256:410e932b050f5eed773c4cda94de75971c89cdb3155a72a0831139a79e5ecb5b
@@ -136,10 +130,6 @@ idna==3.3 \
 importlib-metadata==4.8.1 \
     --hash=sha256:b618b6d2d5ffa2f16add5697cf57a46c76a56229b0ed1c438322e4e95645bd15 \
     --hash=sha256:f284b3e11256ad1e5d03ab86bb2ccd6f5339688ff17a4d797a0fe7df326f23b1
-keepkey==6.3.1 \
-    --hash=sha256:88e2b5291c85c8e8567732f675697b88241082884aa1aba32257f35ee722fc09 \
-    --hash=sha256:cef1e862e195ece3e42640a0f57d15a63086fd1dedc8b5ddfcbc9c2657f0bb1e \
-    --hash=sha256:f369d640c65fec7fd8e72546304cdc768c04224a6b9b00a19dc2cd06fa9d2a6b
 libusb1==2.0.1 \
     --hash=sha256:81381ce1d8852a4d4345b2ee8218971d35865b5f025fef96b43ee082757099cd \
     --hash=sha256:9fda3055c98ab043cfb3beac93ef1de2900ad11d949c694f58bdf414ce2bd03c \
@@ -187,9 +177,6 @@ pycparser==2.20 \
 requests==2.26.0 \
     --hash=sha256:6c1246513ecd5ecd4528a0906f910e8f0f9c6b8ec72030dc9fd154dc1a6efd24 \
     --hash=sha256:b8aa58f8cf793ffd8782d3d8cb19e66ef36f7aba4353eec859e74678b01b07a7
-safet==0.1.5 \
-    --hash=sha256:a7fd4b68bb1bc6185298af665c8e8e00e2bb2bcbddbb22844ead929b845c635e \
-    --hash=sha256:f966a23243312f64d14c7dfe02e8f13f6eeba4c3f51341f2c11ae57831f07de3
 semver==2.13.0 \
     --hash=sha256:ced8b23dceb22134307c1b8abfa523da14198793d9787ac838e70e29e77458d4 \
     --hash=sha256:fa0fe2722ee1c3f57eac478820c3a5ae2f624af8264cbdf9000c980ff7f75e3f
@@ -199,9 +186,6 @@ setuptools==49.6.0 \
 six==1.16.0 \
     --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
-trezor==0.12.4 \
-    --hash=sha256:18becda0ab6867e0b73e87c03ecb167dd783e178328e6b0786f35a1bfb46dda1 \
-    --hash=sha256:3e180d9f9f8b69176b5ef36311b6161f5b793b538eb2dfd4babbb4d3fb1e374e
 typing-extensions==3.10.0.2 \
     --hash=sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e \
     --hash=sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7 \
