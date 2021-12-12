@@ -172,4 +172,4 @@ coll = COLLECT(
     debug=False,
     icon=home+'electrum/gui/icons/electrum.ico',
     console=False,
-    name=os.path.join('dist', 'electrum'))
+    name=os.path.join('dist', 'electrum-sapphire'))
