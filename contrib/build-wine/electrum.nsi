@@ -110,7 +110,7 @@ Section
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\*.*"
 
   ;Files to pack into the installer
-  File /r "dist\electrum\*.*"
+  File /r "dist\electrum-sapphire\*.*"
   File "c:\electrum\electrum\gui\icons\electrum.ico"
 
   ;Store installation folder
