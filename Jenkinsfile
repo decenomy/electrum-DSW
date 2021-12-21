@@ -14,10 +14,13 @@ pipeline {
             steps {
                 echo 'building linux ...'
                 sh '''#!/bin/bash
+                    cd dist
+                    rm -f *.AppImage
+                    cd ..
                     cd contrib
                     cd build-linux
                     cd appimage
-                    ./build.sh
+                    ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                 '''
             }
         }
