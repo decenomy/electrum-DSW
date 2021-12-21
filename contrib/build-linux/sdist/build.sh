@@ -32,6 +32,7 @@ if [ ! -z "$ELECBUILD_COMMIT" ] ; then
     info "ELECBUILD_COMMIT=$ELECBUILD_COMMIT. doing fresh clone and git checkout."
     FRESH_CLONE="$CONTRIB_SDIST/fresh_clone/electrum" && \
         sudo rm -rf "$FRESH_CLONE" && \
+        umask 0022 && \
         git clone "$PROJECT_ROOT" "$FRESH_CLONE" && \
         cd "$FRESH_CLONE"
     git checkout "$ELECBUILD_COMMIT"
@@ -46,6 +47,7 @@ sudo docker run -i \
     -v "$PROJECT_ROOT_OR_FRESHCLONE_ROOT":/opt/electrum \
     --rm \
     --workdir /opt/electrum/contrib/build-linux/sdist \
+    --user $(id -u):$(id -g) \
     electrum-sdist-builder-img \
     ./make_sdist.sh
 
