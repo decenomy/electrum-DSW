@@ -3,8 +3,9 @@ pipeline {
     agent any
 
     environment {
-        ELECBUILD_COMMIT = 'HEAD'
-        ELECBUILD_NOCACHE = '1'
+        NAME = 'Sapphire'
+        BASE_NAME = 'sapphire'
+        ZIP_NAME = 'SAPP-Electrum'
     }
 
     stages {
@@ -21,6 +22,9 @@ pipeline {
                     cd build-linux
                     cd appimage
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
+                    cd ..
+                    cd ..
+                    cd ..
                 '''
             }
         }
@@ -31,7 +35,8 @@ pipeline {
                 echo 'deploy linux ...'
 
                 sh """#!/bin/bash
-                    
+                    cd dist
+                    zip ${ZIP_NAME}-\$(./electrum-*.AppImage version --offline)-Linux.zip electrum-*.AppImage
                 """
             }
         }
