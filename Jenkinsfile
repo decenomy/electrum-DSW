@@ -15,9 +15,7 @@ pipeline {
             steps {
                 echo 'building linux ...'
                 sh '''#!/bin/bash
-                    cd dist
-                    rm -f *.AppImage
-                    cd ..
+                    rm -f dist/*.AppImage
                     cd contrib
                     cd build-linux
                     cd appimage
@@ -49,8 +47,7 @@ pipeline {
                 sh '''#!/bin/bash
                     cd contrib
                     cd build-wine
-                    cd dist
-                    rm -rf *
+                    rm -rf dist/*
                     cd ..
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                     cd ..
