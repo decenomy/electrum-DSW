@@ -42,7 +42,7 @@ else
 fi
 
 info "building binary..."
-sudo docker run -it \
+sudo docker run -i \
     --name electrum-sdist-builder-cont \
     -v "$PROJECT_ROOT_OR_FRESHCLONE_ROOT":/opt/electrum \
     --rm \
