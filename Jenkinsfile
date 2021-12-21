@@ -48,7 +48,6 @@ pipeline {
                     cd contrib
                     cd build-wine
                     rm -rf dist/*
-                    cd ..
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                     cd ..
                     cd ..
