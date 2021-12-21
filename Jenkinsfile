@@ -37,6 +37,7 @@ pipeline {
                 sh """#!/bin/bash
                     cd dist
                     zip ${ZIP_NAME}-\$(./electrum-*.AppImage version --offline)-Linux.zip electrum-*.AppImage
+                    cd ..
                 """
             }
         }
@@ -46,7 +47,14 @@ pipeline {
             steps {
                 echo 'building windows ...'
                 sh '''#!/bin/bash
-                    
+                    cd contrib
+                    cd build-wine
+                    cd dist
+                    rm -rf *
+                    cd ..
+                    ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
+                    cd ..
+                    cd ..
                 '''
             }
         }
@@ -56,7 +64,15 @@ pipeline {
             steps {
                 echo 'deploy windows ...'
                 sh """#!/bin/bash
-                    
+                    cd contrib
+                    cd build-wine
+                    cd dist
+                    zip ${ZIP_NAME}-\$(../../../dist/electrum-*.AppImage version --offline)-Portable-Windows.zip *portable.exe
+                    zip ${ZIP_NAME}-\$(../../../dist/electrum-*.AppImage version --offline)-Setup-Windows.zip *setup.exe
+                    cp *.zip ../../../dist/
+                    cd ..
+                    cd ..
+                    cd ..
                 """
             }
         }
