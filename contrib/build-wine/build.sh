@@ -31,7 +31,6 @@ if [ ! -z "$ELECBUILD_COMMIT" ] ; then
     info "ELECBUILD_COMMIT=$ELECBUILD_COMMIT. doing fresh clone and git checkout."
     FRESH_CLONE="$CONTRIB_WINE/fresh_clone/electrum" && \
         rm -rf "$FRESH_CLONE" && \
-        umask 0022 && \
         git clone "$PROJECT_ROOT" "$FRESH_CLONE" && \
         cd "$FRESH_CLONE"
     git checkout "$ELECBUILD_COMMIT"
