@@ -19,6 +19,7 @@ pipeline {
                     cd contrib
                     cd build-linux
                     cd appimage
+                    rm -rf fresh_clone
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                     cd ..
                     cd ..
@@ -47,6 +48,11 @@ pipeline {
                 sh '''#!/bin/bash
                     cd contrib
                     cd build-wine
+                    rm -rf dist
+                    rm -rf build
+                    rm -rf cache
+                    rm -rf electrum_data
+                    rm -rf fresh_clone
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                     cd ..
                     cd ..
