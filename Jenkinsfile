@@ -10,20 +10,25 @@ pipeline {
 
     stages {
 
+        stage("cleaning") {
+
+            steps {
+                echo 'building linux ...'
+                sh '''#!/bin/bash
+                    rm -f dist/*
+                '''
+            }
+        }
+
         stage("build_linux") {
 
             steps {
                 echo 'building linux ...'
                 sh '''#!/bin/bash
-                    rm -f dist/*.AppImage
                     cd contrib
                     cd build-linux
                     cd appimage
-                    rm -rf fresh_clone
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
-                    cd ..
-                    cd ..
-                    cd ..
                 '''
             }
         }
@@ -36,7 +41,6 @@ pipeline {
                 sh """#!/bin/bash
                     cd dist
                     zip ${ZIP_NAME}-\$(./electrum-*.AppImage version --offline)-Linux.zip electrum-*.AppImage
-                    cd ..
                 """
             }
         }
@@ -48,14 +52,7 @@ pipeline {
                 sh '''#!/bin/bash
                     cd contrib
                     cd build-wine
-                    rm -rf dist
-                    rm -rf build
-                    rm -rf cache
-                    rm -rf electrum_data
-                    rm -rf fresh_clone
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
-                    cd ..
-                    cd ..
                 '''
             }
         }
@@ -71,9 +68,6 @@ pipeline {
                     zip ${ZIP_NAME}-\$(../../../dist/electrum-*.AppImage version --offline)-Portable-Windows.zip *portable.exe
                     zip ${ZIP_NAME}-\$(../../../dist/electrum-*.AppImage version --offline)-Setup-Windows.zip *setup.exe
                     cp *.zip ../../../dist/
-                    cd ..
-                    cd ..
-                    cd ..
                 """
             }
         }

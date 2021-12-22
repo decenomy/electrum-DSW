@@ -47,7 +47,6 @@ sudo docker run -i \
     -v "$PROJECT_ROOT_OR_FRESHCLONE_ROOT":/opt/electrum \
     --rm \
     --workdir /opt/electrum/contrib/build-linux/sdist \
-    --user $(id -u):$(id -g) \
     electrum-sdist-builder-img \
     ./make_sdist.sh
 

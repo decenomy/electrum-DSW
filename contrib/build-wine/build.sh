@@ -21,7 +21,7 @@ if [ ! -z "$ELECBUILD_NOCACHE" ] ; then
 fi
 
 info "building docker image."
-docker build \
+sudo docker build \
     $DOCKER_BUILD_FLAGS \
     -t electrum-wine-builder-img \
     "$CONTRIB_WINE"
@@ -30,7 +30,7 @@ docker build \
 if [ ! -z "$ELECBUILD_COMMIT" ] ; then
     info "ELECBUILD_COMMIT=$ELECBUILD_COMMIT. doing fresh clone and git checkout."
     FRESH_CLONE="$CONTRIB_WINE/fresh_clone/electrum" && \
-        rm -rf "$FRESH_CLONE" && \
+        sudo rm -rf "$FRESH_CLONE" && \
         umask 0022 && \
         git clone "$PROJECT_ROOT" "$FRESH_CLONE" && \
         cd "$FRESH_CLONE"
@@ -41,17 +41,16 @@ else
 fi
 
 info "building binary..."
-docker run -i \
+sudo docker run -i \
     --name electrum-wine-builder-cont \
     -v "$PROJECT_ROOT_OR_FRESHCLONE_ROOT":/opt/wine64/drive_c/electrum \
     --rm \
     --workdir /opt/wine64/drive_c/electrum/contrib/build-wine \
-    --user $(id -u):$(id -g) \
     electrum-wine-builder-img \
     ./make_win.sh
 
 # make sure resulting binary location is independent of fresh_clone
 if [ ! -z "$ELECBUILD_COMMIT" ] ; then
     mkdir --parents "$PROJECT_ROOT/contrib/build-wine/dist/"
-    cp -f "$FRESH_CLONE/contrib/build-wine/dist"/*.exe "$PROJECT_ROOT/contrib/build-wine/dist/"
+    sudo cp -f "$FRESH_CLONE/contrib/build-wine/dist"/*.exe "$PROJECT_ROOT/contrib/build-wine/dist/"
 fi
