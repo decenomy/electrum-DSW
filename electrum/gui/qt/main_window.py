@@ -297,12 +297,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger):
         gui_object.timer.timeout.connect(self.timer_actions)
         self.fetch_alias()
 
-        # If the option hasn't been set yet
-        if config.get('check_updates') is None:
-            choice = self.question(title="Electrum-Sapphire - " + _("Enable update check"),
-                                   msg=_("For security reasons we advise that you always use the latest version of Electrum-Sapphire.") + " " +
-                                       _("Would you like to be notified when there is a newer version of Electrum-Sapphire available?"))
-            config.set_key('check_updates', bool(choice), save=True)
+        # # If the option hasn't been set yet
+        # if config.get('check_updates') is None:
+        #     choice = self.question(title="Electrum-Sapphire - " + _("Enable update check"),
+        #                            msg=_("For security reasons we advise that you always use the latest version of Electrum-Sapphire.") + " " +
+        #                                _("Would you like to be notified when there is a newer version of Electrum-Sapphire available?"))
+        #     config.set_key('check_updates', bool(choice), save=True)
 
         self._update_check_thread = None
         if config.get('check_updates', False):
