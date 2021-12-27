@@ -52,6 +52,7 @@ pipeline {
                 sh '''#!/bin/bash
                     cd contrib
                     cd build-wine
+                    rm -rf dist
                     ELECBUILD_COMMIT=HEAD ELECBUILD_NOCACHE=1 ./build.sh
                 '''
             }
